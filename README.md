@@ -1,13 +1,13 @@
 # Playr - Ruby Interface for the Music Player Daemon 2
 
-# Description
+## Description
 
 Playr is a command-line based MPD client that tries to provide extra
 features on top of the mpc(1) client.
 
 Disclaimer: not nearly done!
 
-# Usage
+## Usage
 
 The following command:
 
@@ -20,6 +20,7 @@ will spawn the interactive playr shell. Where the:
 command will show the available options for interacting with your
 music.
 
-# TODO:
-* a lot! :D
+## TODO:
+
+- a lot! :D
 
