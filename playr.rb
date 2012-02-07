@@ -94,7 +94,7 @@ class Client
 end
 
 opts = OptionParser.new do |o|
-  o.banner = "Usage: mpd [OPTION] [<args>]"
+  o.banner = "Usage: playr [OPTION] [<args>]"
   o.separator ""
   o.on("-h", "--help", "Print this help.") {
     return $stderr.puts(opts)
