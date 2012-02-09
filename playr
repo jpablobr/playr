@@ -28,30 +28,49 @@ class Client
     @mpd.stats.each_pair { |k,v| puts(k + ': ' + v) }
   end
 
-  def playlist
-    warn green(pl_name(@mpd.playlist.first.fetch('file')))
-    @mpd.playlist.each { |l|
-      puts(blue("song: ") + song_name(l.fetch('file')))
+  def playlist rgx=nil
+    if rgx
+      songs = @mpd.playlist.select {|s| s['file'][rgx] }
+    else
+      songs = @mpd.playlist
+    end
+
+    puts green(pl_name(@mpd.playlist.first.fetch('file')))
+    songs.each { |l|
+      puts(blue("song:") +
+      yellow(l.fetch('id')) +
+      ' ' +
+      song_name(l.fetch('file')))
+    }
+  end
+
+  def search rgx
+    @mpd.songs.select {|s| s['file'][rgx] }
+      .each { |l|
+      puts(blue("song:") +
+      yellow(l.fetch('id')) +
+      ' ' +
+      song_name(l.fetch('file')))
     }
   end
 
   def playlists
-    @mpd.playlists.each { |p| warn "#{blue("pl:")} #{p}" }
+    @mpd.playlists.each { |p| puts "#{blue("pl:")} #{p}" }
   end
 
-  def pause;      @mpd.pause = true             end
-  def continue;   @mpd.pause = false            end
-  def stop;       @mpd.stop                     end
-  def next;       @mpd.next                     end
-  def prev;       @mpd.previous                 end
-  def disconnect; @mpd.disconnect               end
-  def repeat;     @mpd.repeat = !@mpd.repeat?   end
-  def random;     @mpd.random = !@mpd.random?   end
-  def play song;  @mpd.play song                end
-  def +;          Vol.+                         end
-  def -;          Vol.-                         end
-  def mute;       Vol.mute                      end
-  def vol v;      Vol.vol(v)                    end
+  def pause;      @mpd.pause = true           end
+  def continue;   @mpd.pause = false          end
+  def stop;       @mpd.stop                   end
+  def next;       @mpd.next                   end
+  def prev;       @mpd.previous               end
+  def disconnect; @mpd.disconnect             end
+  def repeat;     @mpd.repeat = !@mpd.repeat? end
+  def random;     @mpd.random = !@mpd.random? end
+  def play song;  @mpd.play song              end
+  def +;          Vol.+                       end
+  def -;          Vol.-                       end
+  def mute;       Vol.mute                    end
+  def vol v;      Vol.vol(v)                  end
 
   def help
     commands
@@ -59,7 +78,7 @@ class Client
       .map(&:last)
       .sort {|a,b| a.to_s.size <=> b.to_s.size }
       .select { |s|
-      warn blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
+      puts blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
     }
   end
 
@@ -68,7 +87,7 @@ class Client
   alias :ps  :pause
   alias :p   :play
   alias :c   :continue
-  alias :s   :song?
+  alias :s   :search
   alias :h   :help
   alias :n   :next
   alias :r   :random
