@@ -30,7 +30,7 @@ class Client
 
   def playlist rgx=nil
     if rgx
-      songs = @mpd.playlist.select {|s| s['file'][rgx] }
+      songs = @mpd.playlist.select { |s| s['file'][rgx] }
     else
       songs = @mpd.playlist
     end
@@ -45,17 +45,20 @@ class Client
   end
 
   def search rgx
-    @mpd.songs.select {|s| s['file'][rgx] }
+    @mpd.songs.select { |s| s['file'][rgx] }
       .each { |l|
-      puts(blue("song:") +
-      yellow(l.fetch('id')) +
-      ' ' +
+      puts(blue("song: ") +
       song_name(l.fetch('file')))
     }
   end
 
-  def playlists
-    @mpd.playlists.each { |p| puts "#{blue("pl:")} #{p}" }
+  def playlists rgx=nil
+    if rgx
+      songs = @mpd.playlists.select { |pl| pl[rgx] }
+    else
+      songs = @mpd.playlists
+    end
+    songs.each { |p| puts "#{blue("pl:")} #{p}" }
   end
 
   def pause;      @mpd.pause = true           end
@@ -74,16 +77,16 @@ class Client
 
   def help
     commands
-      .group_by{|m| Client.instance_method(m)}
+      .group_by{ |m| Client.instance_method(m)}
       .map(&:last)
-      .sort {|a,b| a.to_s.size <=> b.to_s.size }
+      .sort { |a,b| a.to_s.size <=> b.to_s.size }
       .select { |s|
       puts blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
     }
   end
 
   alias :ls  :playlist
-  alias :pls :playlists
+  alias :lsp :playlists
   alias :ps  :pause
   alias :p   :play
   alias :c   :continue
@@ -102,7 +105,7 @@ class Client
       unless Readline::HISTORY.to_a[-1] == line
         Readline::HISTORY.push line
       end
-      break if line.match(/(^quit$|^q$)/)
+      break if line.match(/(^quit$|^exit$|^q$)/)
       process_cmd(line)
     end
   end
