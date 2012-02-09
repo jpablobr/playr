@@ -14,8 +14,7 @@ class Client
 
   def initialize
     @mpd = MPD.new
-    @mpd.connect
-    start!
+    @mpd.connect && start!
   end
 
   def stats
@@ -28,7 +27,7 @@ class Client
 
   def playlist rgx=nil
     if rgx
-      songs = @mpd.playlist.select { |s| s['file'][rgx] }
+      songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
     else
       songs = @mpd.playlist
     end
@@ -36,7 +35,7 @@ class Client
   end
 
   def search rgx
-    @mpd.songs.select { |s| s['file'][rgx] }.each { |l|
+    @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l|
       search_printer(s)
     }
   end
@@ -133,7 +132,7 @@ class Client
   end
 
   def help_printer s
-    puts blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
+    puts blue(s[0].to_s) + (s.fetch(1).nil? ? '' : (' or: ' + green(s.fetch(1).to_s)))
   end
 
   def process_cmd cmd
