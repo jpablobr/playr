@@ -25,7 +25,7 @@ class Client
   end
 
   def stats
-    @mpd.stats.each_pair { |k,v| puts(k + ': ' + v) }
+    @mpd.stats.each_pair { |k,v| puts(k+': ' + v) }
   end
 
   def playlist rgx=nil
@@ -34,21 +34,12 @@ class Client
     else
       songs = @mpd.playlist
     end
-
-    puts green(pl_name(@mpd.playlist.first.fetch('file')))
-    songs.each { |l|
-      puts(blue("song:") +
-      yellow(l.fetch('id')) +
-      ' ' +
-      song_name(l.fetch('file')))
-    }
+    playlist_printer(songs)
   end
 
   def search rgx
-    @mpd.songs.select { |s| s['file'][rgx] }
-      .each { |l|
-      puts(blue("song: ") +
-      song_name(l.fetch('file')))
+    @mpd.songs.select { |s| s['file'][rgx] }.each { |l|
+      search_printer(s)
     }
   end
 
@@ -58,7 +49,7 @@ class Client
     else
       songs = @mpd.playlists
     end
-    songs.each { |p| puts "#{blue("pl:")} #{p}" }
+    playlists_printer(songs)
   end
 
   def pause;      @mpd.pause = true           end
@@ -80,9 +71,7 @@ class Client
       .group_by{ |m| Client.instance_method(m)}
       .map(&:last)
       .sort { |a,b| a.to_s.size <=> b.to_s.size }
-      .select { |s|
-      puts blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
-    }
+      .select { |s| help_printer(s) }
   end
 
   alias :ls  :playlist
@@ -129,6 +118,26 @@ class Client
     song_name(@mpd.current_song.fetch('file'))
   end
 
+  def search_printer s
+    puts(blue("song: ") + song_name(l.fetch('file')))
+  end
+
+  def playlists_printer songs
+    songs.each { |p| puts blue("pl:") + p }
+  end
+
+  def playlist_printer songs
+    puts green(pl_name(@mpd.playlist.first.fetch('file')))
+    songs.each { |l|
+      puts(blue("song:") +
+      yellow(l.fetch('id'))+' '+song_name(l.fetch('file')))
+    }
+  end
+
+  def help_printer s
+    puts blue(s[0].to_s) + (s[1].nil? ? '' : (' or: ' + green(s[1].to_s)))
+  end
+
   def process_cmd cmd
     meth = cmd.split[0]
     args = cmd.split[1..-1]
@@ -136,7 +145,7 @@ class Client
       begin
         self.send(meth, *args)
       rescue ArgumentError => e
-        puts "Command \"" + meth + "\" " + e.message
+        puts "Command \""+ meth +"\" "+ e.message
       end
     else
       warn "Unknown command: #{cmd.inspect}"
@@ -147,7 +156,7 @@ end
 class Prompt
   class << self
     def display data, sign='♪'
-      prompt_color(data + ' ' + sign + ' ')
+      prompt_color(data +' '+ sign +' ')
     end
 
     private
@@ -175,21 +184,11 @@ end
 opts = OptionParser.new do |o|
   o.banner = "Usage: playr [OPTION] [<args>]"
   o.separator ""
-  o.on("-h", "--help", "Print this help.") {
-    $stderr.puts(opts)
-  }
-  o.on("-v", "--version", "Print version.") {
-    $stderr.puts("0.1.0")
-  }
-  o.on("-s", "--start", "Run the mpd client.") {
-    Client.new
-  }
-  o.on("-t", "--tests", "run tests.") {
-    eval(DATA.read)
-  }
-  o.on("-d", "--debug", "Enable debug output.") {
-    $DEBUG = true
-  }
+  o.on("-h", "--help", "Print this help.")      { $stderr.puts(opts) }
+  o.on("-v", "--version", "Print version.")     { $stderr.puts("0.1.0") }
+  o.on("-s", "--start", "Run the mpd client.")  { Client.new }
+  o.on("-t", "--tests", "run tests.")           { eval(DATA.read) }
+  o.on("-d", "--debug", "Enable debug output.") { $DEBUG = true }
   o.separator ""
 end
 
