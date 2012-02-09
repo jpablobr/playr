@@ -18,14 +18,12 @@ class Client
     start!
   end
 
-  def song?
-    @mpd.current_song.each_pair { |k,v|
-      puts(blue(k+": ") + v)
-    }
-  end
-
   def stats
     @mpd.stats.each_pair { |k,v| puts(k+': ' + v) }
+  end
+
+  def song?
+    @mpd.current_song.each_pair { |k,v| puts(blue(k+": ") + v) }
   end
 
   def playlist rgx=nil
