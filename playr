@@ -13,16 +13,17 @@ module Playr
     @mpd    ||= MPD.new
     @vol    ||= Volume.new
     @format ||= Formatter.new
-    @mpd.connected? || @mpd.connect
+    begin
+      (@mpd.connected? || @mpd.connect)
+    rescue Errno::ECONNREFUSED => e
+      puts e.message
+      exit 1
+    end
   end
 
   class Client
     require 'readline'
     include Playr
-
-    Readline.completion_proc = lambda { |word|
-      commands.each.grep(/^#{ Regexp.escape(word) }/)
-    }
 
     def initialize
       super
@@ -35,7 +36,7 @@ module Playr
     end
 
     def song?
-      @mpd.current_song.each_pair { |k,v| @print.write(blue(k+": ") + v) }
+      @mpd.current_song.each_pair { |k,v| @print.write(blue(k+": ") + v +"\n") }
     end
 
     def search rgx
@@ -77,6 +78,7 @@ module Playr
     def repeat;     @mpd.repeat = !@mpd.repeat?  end
     def random;     @mpd.random = !@mpd.random?  end
     def play song;  @mpd.play song               end
+    def load pl;    @mpd.load(pl)                end
     def +;          @vol.+                       end
     def -;          @vol.-                       end
     def mute;       @vol.mute                    end
@@ -104,6 +106,9 @@ module Playr
     def start!
       while line = Readline.readline(@print.prompt(prompt_data)).strip
         next if line.empty?
+        Readline.completion_proc = lambda { |word|
+          commands.each.grep(/^#{ Regexp.escape(word) }/)
+        }
         unless Readline::HISTORY.to_a[-1] == line
           Readline::HISTORY.push line
         end
@@ -137,8 +142,9 @@ module Playr
   class Printer
     include Playr
 
-    def initialize;      super                        end
-    def prompt d, i='♪'; prompt_color(d +' '+ i +' ') end
+    def initialize;      super                          end
+    def prompt d, i='♪'; prompt_color(d +' '+ i +' ')   end
+    def write data;      (Playr.out || $>)<< data; data end
 
     def search s
       write(blue("song: ") + @format.song_name(l.fetch('file')) +"\n" )
@@ -162,7 +168,6 @@ module Playr
 
     private
     def prompt_color p; @vol.mute? ? red(p) : green(p) end
-    def write data;     (Playr.out || $>)<< data; data end
   end
 
   class Volume
