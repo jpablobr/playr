@@ -14,7 +14,7 @@ module Playr
     @vol    ||= Volume.new
     @format ||= Formatter.new
     begin
-      (@mpd.connected? || @mpd.connect)
+      @mpd.connected? || @mpd.connect
     rescue Errno::ECONNREFUSED => e
       puts e.message
       exit 1
@@ -116,7 +116,8 @@ module Playr
       while line = Readline.readline(@print.prompt(prompt_data)).strip
         next if line.empty?
         Readline.completion_proc = lambda { |word|
-          commands.each.grep(/^#{ Regexp.escape(word) }/)
+          @mpd.songs.map { |s| s.fetch('file') }
+            .grep(/^#{Regexp.escape(word)}/)
         }
         unless Readline::HISTORY.to_a[-1] == line
           Readline::HISTORY.push line
