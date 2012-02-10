@@ -212,8 +212,8 @@ class TestClient < MiniTest::Unit::TestCase
   def test_help_should_not_incude_start_method
     require 'stringio'
     str = StringIO.new << @c.help
-    assert !str.string.match(/start/)
-    assert str.string.match(/(play|mute|vol|next)/)
+    refute_match /start/, str.string
+    assert_match /(play|mute|vol|next)/, str.string
   end
 
   class TestFormatter < MiniTest::Unit::TestCase
