@@ -32,6 +32,10 @@ module Playr
       @mpd.current_song.each_pair { |k,v| puts(blue(k+": ") + v) }
     end
 
+    def search rgx
+      @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
+    end
+
     def playlist rgx=nil
       if rgx
         songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
@@ -39,10 +43,6 @@ module Playr
         songs = @mpd.playlist
       end
       @print.playlist(songs)
-    end
-
-    def search rgx
-      @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
     end
 
     def playlists rgx=nil
@@ -62,20 +62,20 @@ module Playr
         .select { |s| @print.help(s) }
     end
 
-    def pause;      @mpd.pause = true           end
-    def continue;   @mpd.pause = false          end
-    def stop;       @mpd.stop                   end
-    def next;       @mpd.next                   end
-    def prev;       @mpd.previous               end
-    def disconnect; @mpd.disconnect             end
-    def repeat;     @mpd.repeat = !@mpd.repeat? end
-    def random;     @mpd.random = !@mpd.random? end
-    def play song;  @mpd.play song              end
-    def +;          @vol.+                      end
-    def -;          @vol.-                      end
-    def mute;       @vol.mute                   end
-    def vol v;      @vol.vol(v)                 end
-    def stats; @mpd.stats.each_pair { |k,v| puts(k+': ' + v) } end
+    def pause;      @mpd.pause = true                               end
+    def continue;   @mpd.pause = false                              end
+    def stop;       @mpd.stop                                       end
+    def next;       @mpd.next                                       end
+    def prev;       @mpd.previous                                   end
+    def disconnect; @mpd.disconnect                                 end
+    def repeat;     @mpd.repeat = !@mpd.repeat?                     end
+    def random;     @mpd.random = !@mpd.random?                     end
+    def play song;  @mpd.play song                                  end
+    def +;          @vol.+                                          end
+    def -;          @vol.-                                          end
+    def mute;       @vol.mute                                       end
+    def vol v;      @vol.vol(v)                                     end
+    def stats;      @mpd.stats.each_pair { |k,v| puts(k+': ' + v) } end
 
     alias :ls  :playlist
     alias :lsp :playlists
