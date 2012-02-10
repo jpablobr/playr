@@ -7,6 +7,8 @@ module Playr
   require 'term/ansicolor'
   include Term::ANSIColor
 
+  extend Module.new { attr_accessor :out }
+
   def initialize
     @mpd    ||= MPD.new
     @vol    ||= Volume.new
@@ -28,8 +30,12 @@ module Playr
       start!
     end
 
+    def stats
+      @mpd.stats.each_pair { |k,v| @print.write(k+': ' + v) }
+    end
+
     def song?
-      @mpd.current_song.each_pair { |k,v| puts(blue(k+": ") + v) }
+      @mpd.current_song.each_pair { |k,v| @print.write(blue(k+": ") + v) }
     end
 
     def search rgx
@@ -62,20 +68,19 @@ module Playr
         .select { |s| @print.help(s) }
     end
 
-    def pause;      @mpd.pause = true                               end
-    def continue;   @mpd.pause = false                              end
-    def stop;       @mpd.stop                                       end
-    def next;       @mpd.next                                       end
-    def prev;       @mpd.previous                                   end
-    def disconnect; @mpd.disconnect                                 end
-    def repeat;     @mpd.repeat = !@mpd.repeat?                     end
-    def random;     @mpd.random = !@mpd.random?                     end
-    def play song;  @mpd.play song                                  end
-    def +;          @vol.+                                          end
-    def -;          @vol.-                                          end
-    def mute;       @vol.mute                                       end
-    def vol v;      @vol.vol(v)                                     end
-    def stats;      @mpd.stats.each_pair { |k,v| puts(k+': ' + v) } end
+    def pause;      @mpd.pause = true            end
+    def continue;   @mpd.pause = false           end
+    def stop;       @mpd.stop                    end
+    def next;       @mpd.next                    end
+    def prev;       @mpd.previous                end
+    def disconnect; @mpd.disconnect              end
+    def repeat;     @mpd.repeat = !@mpd.repeat?  end
+    def random;     @mpd.random = !@mpd.random?  end
+    def play song;  @mpd.play song               end
+    def +;          @vol.+                       end
+    def -;          @vol.-                       end
+    def mute;       @vol.mute                    end
+    def vol v;      @vol.vol(v)                  end
 
     alias :ls  :playlist
     alias :lsp :playlists
@@ -132,30 +137,32 @@ module Playr
   class Printer
     include Playr
 
-    def initialize;      super                                   end
-    def prompt d, i='♪'; prompt_color(d +' '+ i +' ')            end
-    def playlists songs; songs.each { |p| puts blue("pl:") + p } end
+    def initialize;      super                        end
+    def prompt d, i='♪'; prompt_color(d +' '+ i +' ') end
 
     def search s
-      puts(blue("song: ") + @format.song_name(l.fetch('file')))
+      write(blue("song: ") + @format.song_name(l.fetch('file')) +"\n" )
+    end
+
+    def playlists songs
+      songs.each { |p|
+        write(blue("pl: ") + p +"\n") }
     end
 
     def playlist songs
-      puts green(@format.pl_name(@mpd.playlist.first))
+      write(green(@format.pl_name(@mpd.playlist.first)))
       songs.each { |l|
-        puts(blue("song:") +
-        yellow(l.fetch('id'))+' '+@format.song_name(l.fetch('file')))
+        write(blue("song:") + yellow(l.fetch('id'))+' '+ @format.song_name(l.fetch('file')) +"\n")
       }
     end
 
-    def help cmd
-      puts blue(cmd[0].to_s) +
-        (cmd[1].nil? ? '' : (' or: ' + green(cmd[1].to_s)))
+    def help c
+      write(blue(c[0].to_s) + (c[1].nil? ? '' : (' or: ' + green(c[1].to_s))) + "\n")
     end
 
     private
-
     def prompt_color p; @vol.mute? ? red(p) : green(p) end
+    def write data;     (Playr.out || $>)<< data; data end
   end
 
   class Volume
@@ -176,12 +183,12 @@ module Playr
   end
 end
 
-
+$stdout.sync = $stderr.sync = true
 opts = OptionParser.new do |o|
   o.banner = "Usage: playr [OPTION] [<args>]"
   o.separator ""
-  o.on("-h", "--help", "Print this help.")      { $stderr.puts(opts) }
-  o.on("-v", "--version", "Print version.")     { $stderr.puts("0.1.1") }
+  o.on("-h", "--help", "Print this help.")      { Playr.out.puts(opts) }
+  o.on("-v", "--version", "Print version.")     { Playr.out.puts("0.1.1") }
   o.on("-s", "--start", "Run the mpd client.")  { Playr::Client.new }
   o.on("-t", "--tests", "run tests.")           { eval(DATA.read) }
   o.on("-d", "--debug", "Enable debug output.") { $DEBUG = true }
@@ -191,25 +198,44 @@ end
 opts.parse!(ARGV)
 
 __END__
+#encoding: utf-8
 require 'minitest/autorun'
 class TestClient < MiniTest::Unit::TestCase
+  Playr.out = File.new('/dev/null', 'w')
+
   def setup
-    @c = Client.new
+    @c = Playr::Client.new
   end
 
-  def test_should_return_an_array
-    assert true, @c.commands.is_a?(Array)
+  def test_help_should_not_incude_start_method
+    require 'stringio'
+    str = StringIO.new << @c.help
+    assert !str.string.inspect.match(/start/)
+    assert str.string.inspect.match(/(play|mute|vol|next)/)
   end
 
-  def test_should_not_incude_start_or_commands_methods
-    [:start!, :commands].each { |m|
-      assert true, @c.commands.include?(m)
-    }
+  class TestFormatter < MiniTest::Unit::TestCase
+    def setup
+      @f = Playr::Formatter.new
+    end
+
+    def test_pl_name
+      assert_equal 'foo/bar/baz', @f.pl_name({'file' => 'foo/bar/baz/quux.mp3'})
+    end
+
+    def test_song_name
+      assert_equal 'quux', @f.song_name('foo/bar/baz/quux.mp3')
+    end
   end
 
-  def test_process_cmd_should_raise_wrong_number_of_arguments
-    assert_output('"mute" does not accept arguments.') {
-      @c.process_cmd("mute invalid arg")
-    }
+  class TestPrinter < MiniTest::Unit::TestCase
+    def setup
+      @p = Playr::Printer.new
+    end
+
+    def test_prompt
+      assert_equal "\e[32mfoo ♪ \e[0m", @p.prompt("foo")
+      assert_equal "\e[32mbaz ♬ \e[0m", @p.prompt("baz", "♬")
+    end
   end
 end
