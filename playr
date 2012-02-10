@@ -1,180 +1,181 @@
 #!/usr/bin/env ruby
 # coding: utf-8
 require 'optparse'
-require 'term/ansicolor'
-include Term::ANSIColor
 
-class Client
+module Playr
   require 'librmpd'
-  require 'readline'
-
-  Readline.completion_proc = lambda { |word|
-    commands.each.grep(/^#{ Regexp.escape(word) }/)
-  }
+  require 'term/ansicolor'
+  include Term::ANSIColor
 
   def initialize
-    @mpd = MPD.new
-    @mpd.connect && start!
+    @mpd    ||= MPD.new
+    @vol    ||= Volume.new
+    @format ||= Formatter.new
+    @mpd.connected? || @mpd.connect
   end
 
-  def stats
-    @mpd.stats.each_pair { |k,v| puts(k+': ' + v) }
-  end
+  class Client
+    require 'readline'
+    include Playr
 
-  def song?
-    @mpd.current_song.each_pair { |k,v| puts(blue(k+": ") + v) }
-  end
-
-  def playlist rgx=nil
-    if rgx
-      songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
-    else
-      songs = @mpd.playlist
-    end
-    playlist_printer(songs)
-  end
-
-  def search rgx
-    @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l|
-      search_printer(s)
+    Readline.completion_proc = lambda { |word|
+      commands.each.grep(/^#{ Regexp.escape(word) }/)
     }
-  end
 
-  def playlists rgx=nil
-    if rgx
-      songs = @mpd.playlists.select { |pl| pl[rgx] }
-    else
-      songs = @mpd.playlists
+    def initialize
+      super
+      @print ||= Printer.new
+      start!
     end
-    playlists_printer(songs)
-  end
 
-  def pause;      @mpd.pause = true           end
-  def continue;   @mpd.pause = false          end
-  def stop;       @mpd.stop                   end
-  def next;       @mpd.next                   end
-  def prev;       @mpd.previous               end
-  def disconnect; @mpd.disconnect             end
-  def repeat;     @mpd.repeat = !@mpd.repeat? end
-  def random;     @mpd.random = !@mpd.random? end
-  def play song;  @mpd.play song              end
-  def +;          Vol.+                       end
-  def -;          Vol.-                       end
-  def mute;       Vol.mute                    end
-  def vol v;      Vol.vol(v)                  end
+    def stats
+      @mpd.stats.each_pair { |k,v| puts(k+': ' + v) }
+    end
 
-  def help
-    commands
-      .group_by{ |m| Client.instance_method(m)}
-      .map(&:last)
-      .sort { |a,b| a.to_s.size <=> b.to_s.size }
-      .select { |s| help_printer(s) }
-  end
+    def song?
+      @mpd.current_song.each_pair { |k,v| puts(blue(k+": ") + v) }
+    end
 
-  alias :ls  :playlist
-  alias :lsp :playlists
-  alias :ps  :pause
-  alias :p   :play
-  alias :c   :continue
-  alias :s   :search
-  alias :h   :help
-  alias :n   :next
-  alias :r   :random
-  alias :v   :vol
-  alias :d   :disconnect
-
-  private
-
-  def start!
-    while line = Readline.readline(Prompt.display(prompt_data)).strip
-      next if line.empty?
-      unless Readline::HISTORY.to_a[-1] == line
-        Readline::HISTORY.push line
+    def playlist rgx=nil
+      if rgx
+        songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
+      else
+        songs = @mpd.playlist
       end
-      break if line.match(/(^quit$|^exit$|^q$)/)
-      process_cmd(line)
+      @print.playlist(songs)
     end
-  end
 
-  def commands
-    (Client.instance_methods -
-      Object.instance_methods -
-      Term::ANSIColor.instance_methods)
-      .select { |c| c.to_s !~ /start!/ }
-  end
+    def search rgx
+      @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
+    end
 
-  def pl_name pl
-    pl.split('/')[0..-2].join('/')
-  end
-
-  def song_name song
-    song.gsub(/(.*\/)|(\..*$)/,'')
-  end
-
-  def prompt_data
-    song_name(@mpd.current_song.fetch('file'))
-  end
-
-  def search_printer s
-    puts(blue("song: ") + song_name(l.fetch('file')))
-  end
-
-  def playlists_printer songs
-    songs.each { |p| puts blue("pl:") + p }
-  end
-
-  def playlist_printer songs
-    puts green(pl_name(@mpd.playlist.first.fetch('file')))
-    songs.each { |l|
-      puts(blue("song:") +
-      yellow(l.fetch('id'))+' '+song_name(l.fetch('file')))
-    }
-  end
-
-  def help_printer s
-    puts blue(s[0].to_s) + (s.fetch(1).nil? ? '' : (' or: ' + green(s.fetch(1).to_s)))
-  end
-
-  def process_cmd cmd
-    meth = cmd.split[0]
-    args = cmd.split[1..-1]
-    if commands.include?(meth.to_sym)
-      begin
-        self.send(meth, *args)
-      rescue ArgumentError => e
-        puts "Command \""+ meth +"\" "+ e.message
+    def playlists rgx=nil
+      if rgx
+        songs = @mpd.playlists.select { |pl| pl[rgx] }
+      else
+        songs = @mpd.playlists
       end
-    else
-      warn "Unknown command: #{cmd.inspect}"
+      @print.playlists(songs)
+    end
+
+    def help
+      commands
+        .group_by{ |m| Client.instance_method(m) }
+        .map(&:last)
+        .sort { |a,b| a.to_s.size <=> b.to_s.size }
+        .select { |s| @print.help(s) }
+    end
+
+    def pause;      @mpd.pause = true           end
+    def continue;   @mpd.pause = false          end
+    def stop;       @mpd.stop                   end
+    def next;       @mpd.next                   end
+    def prev;       @mpd.previous               end
+    def disconnect; @mpd.disconnect             end
+    def repeat;     @mpd.repeat = !@mpd.repeat? end
+    def random;     @mpd.random = !@mpd.random? end
+    def play song;  @mpd.play song              end
+    def +;          @vol.+                      end
+    def -;          @vol.-                      end
+    def mute;       @vol.mute                   end
+    def vol v;      @vol.vol(v)                 end
+
+    alias :ls  :playlist
+    alias :lsp :playlists
+    alias :ps  :pause
+    alias :p   :play
+    alias :c   :continue
+    alias :s   :search
+    alias :h   :help
+    alias :n   :next
+    alias :r   :random
+    alias :v   :vol
+    alias :m   :mute
+    alias :d   :disconnect
+
+    private
+
+    def prompt_data
+      @format.song_name(@mpd.current_song.fetch('file'))
+    end
+
+    def start!
+      while line = Readline.readline(@print.prompt(prompt_data)).strip
+        next if line.empty?
+        unless Readline::HISTORY.to_a[-1] == line
+          Readline::HISTORY.push line
+        end
+        break if line.match(/(^quit$|^exit$|^q$)/)
+        process_cmd(line)
+      end
+    end
+
+    def commands
+      (Client.instance_methods -
+        Object.instance_methods -
+        Term::ANSIColor.instance_methods)
+        .select { |c| c.to_s !~ /start!/ }
+    end
+
+    def process_cmd cmd
+      meth = cmd.split[0]
+      args = cmd.split[1..-1]
+      if commands.include?(meth.to_sym)
+        begin
+          self.send(meth, *args)
+        rescue ArgumentError => e
+          puts "Command \""+ meth +"\" "+ e.message
+        end
+      else
+        warn "Unknown command: #{cmd.inspect}"
+      end
     end
   end
-end
 
-class Prompt
-  class << self
-    def display data, sign='♪'
-      prompt_color(data +' '+ sign +' ')
+  class Formatter
+    def pl_name pl;     pl.fetch('file').split('/')[0..-2].join('/') end
+    def song_name song; song.gsub(/(.*\/)|(\..*$)/,'')               end
+  end
+
+  class Printer
+    include Playr
+
+    def initialize;      super                                   end
+    def prompt d, i='♪'; prompt_color(d +' '+ i +' ')            end
+    def playlists songs; songs.each { |p| puts blue("pl:") + p } end
+
+    def search s
+      puts(blue("song: ") + @format.song_name(l.fetch('file')))
+    end
+
+    def playlist songs
+      puts green(@format.pl_name(@mpd.playlist.first))
+      songs.each { |l|
+        puts(blue("song:") +
+        yellow(l.fetch('id'))+' '+@format.song_name(l.fetch('file')))
+      }
+    end
+
+    def help cmd
+      puts blue(cmd[0].to_s) +
+        (cmd.fetch(1).nil? ? '' : (' or: ' + green(cmd.fetch(1).to_s)))
     end
 
     private
 
-    def prompt_color p
-      Vol.mute? ? red(p) : green(p)
-    end
+    def prompt_color p; @vol.mute? ? red(p) : green(p) end
   end
-end
 
-class Vol
-  @@vol_set = 'amixer sset Master'
-  @@vol_get = 'amixer sget Master'
-  class << self
-    def +;     `#{@@vol_set} 5%+`    end
-    def -;     `#{@@vol_set} 5%-`    end
-    def mute;  `#{@@vol_set} toggle` end
-    def vol v; `#{@@vol_set} "#{v}"` end
-    def mute?
-      `#{@@vol_get} | awk '/Mono:/{print $6}'`['off']
+  class Volume
+    def initialize
+      @vol_set = 'amixer sset Master'
+      @vol_get = 'amixer sget Master'
     end
+    def +;     `#{@vol_set} 5%+`               end
+    def -;     `#{@vol_set} 5%-`               end
+    def mute;  `#{@vol_set} toggle`            end
+    def mute?; `#{@vol_get}`.split.last['off'] end
+    def vol v; `#{@vol_set} "#{v}"`            end
   end
 end
 
@@ -182,8 +183,8 @@ opts = OptionParser.new do |o|
   o.banner = "Usage: playr [OPTION] [<args>]"
   o.separator ""
   o.on("-h", "--help", "Print this help.")      { $stderr.puts(opts) }
-  o.on("-v", "--version", "Print version.")     { $stderr.puts("0.1.0") }
-  o.on("-s", "--start", "Run the mpd client.")  { Client.new }
+  o.on("-v", "--version", "Print version.")     { $stderr.puts("0.1.1") }
+  o.on("-s", "--start", "Run the mpd client.")  { Playr::Client.new }
   o.on("-t", "--tests", "run tests.")           { eval(DATA.read) }
   o.on("-d", "--debug", "Enable debug output.") { $DEBUG = true }
   o.separator ""
