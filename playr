@@ -43,6 +43,15 @@ module Playr
       @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
     end
 
+    def songs rgx=nil
+      if rgx
+        list = @mpd.songs.select { |s| s.fetch('file')[rgx] }
+      else
+        list = @mpd.songs
+      end
+      @print.songs(list)
+    end
+
     def playlist rgx=nil
       if rgx
         songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
@@ -150,14 +159,21 @@ module Playr
       write(blue("song: ") + @format.song_name(l.fetch('file')) +"\n" )
     end
 
-    def playlists songs
-      songs.each { |p|
-        write(blue("pl: ") + p +"\n") }
+    def songs s
+      s.each { |p|
+        write(blue("♬ ") + @format.song_name(p.fetch('file')) + "\n")
+      }
     end
 
-    def playlist songs
+    def playlists pls
+      pls.each { |p|
+        write(blue("pl: ") + p +"\n")
+      }
+    end
+
+    def playlist pl
       write(green(@format.pl_name(@mpd.playlist.first)))
-      songs.each { |l|
+      pl.each { |l|
         write(blue("song:") + yellow(l.fetch('id'))+' '+ @format.song_name(l.fetch('file')) +"\n")
       }
     end
@@ -183,8 +199,13 @@ module Playr
   end
 
   class Formatter
-    def pl_name pl;     pl.fetch('file').split('/')[0..-2].join('/') end
-    def song_name song; song.gsub(/(.*\/)|(\..*$)/,'')               end
+    def pl_name pl
+      pl.fetch('file').split('/')[0..-2].join('/')
+    end
+
+    def song_name song
+      song.scan(/[[:print:]]/).join.gsub(/(.*\/)|(\..*$)/,'')
+    end
   end
 end
 
