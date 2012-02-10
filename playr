@@ -129,11 +129,6 @@ module Playr
     end
   end
 
-  class Formatter
-    def pl_name pl;     pl.fetch('file').split('/')[0..-2].join('/') end
-    def song_name song; song.gsub(/(.*\/)|(\..*$)/,'')               end
-  end
-
   class Printer
     include Playr
 
@@ -174,7 +169,13 @@ module Playr
     def mute?; `#{@vol_get}`.split.last['off'] end
     def vol v; `#{@vol_set} "#{v}"`            end
   end
+
+  class Formatter
+    def pl_name pl;     pl.fetch('file').split('/')[0..-2].join('/') end
+    def song_name song; song.gsub(/(.*\/)|(\..*$)/,'')               end
+  end
 end
+
 
 opts = OptionParser.new do |o|
   o.banner = "Usage: playr [OPTION] [<args>]"
