@@ -27,7 +27,7 @@ module Playr
     def initialize
       super
       @print ||= Printer.new
-      start!
+      start! unless $TEST
     end
 
     def stats
@@ -199,6 +199,7 @@ opts.parse!(ARGV)
 
 __END__
 #encoding: utf-8
+$TEST = true
 require 'minitest/autorun'
 class TestClient < MiniTest::Unit::TestCase
   Playr.out = File.new('/dev/null', 'w')
