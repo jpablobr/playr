@@ -201,9 +201,10 @@ __END__
 #encoding: utf-8
 $TEST = true
 require 'minitest/autorun'
-class TestClient < MiniTest::Unit::TestCase
-  Playr.out = File.new('/dev/null', 'w')
 
+Playr.out = File.new('/dev/null', 'w')
+
+class TestClient < MiniTest::Unit::TestCase
   def setup
     @c = Playr::Client.new
   end
