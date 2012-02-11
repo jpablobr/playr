@@ -16,7 +16,7 @@ module Playr
     begin
       @mpd.connected? || @mpd.connect
     rescue Errno::ECONNREFUSED => e
-      puts e.message
+      @print.write e.message
       exit 1
     end
   end
@@ -78,6 +78,14 @@ module Playr
         .select { |s| @print.help(s) }
     end
 
+    def play song
+      begin
+        @mpd.play song
+      rescue RuntimeError => e
+        @print.write(e)
+      end
+    end
+
     def pause;      @mpd.pause = true            end
     def continue;   @mpd.pause = false           end
     def stop;       @mpd.stop                    end
@@ -86,7 +94,6 @@ module Playr
     def disconnect; @mpd.disconnect              end
     def repeat;     @mpd.repeat = !@mpd.repeat?  end
     def random;     @mpd.random = !@mpd.random?  end
-    def play song;  @mpd.play song               end
     def load pl;    @mpd.load(pl)                end
     def +;          @vol.+                       end
     def -;          @vol.-                       end
@@ -131,7 +138,7 @@ module Playr
       (Client.instance_methods -
         Object.instance_methods -
         Term::ANSIColor.instance_methods)
-        .select { |c| c.to_s !~ /start!/ }
+        .select { |c| c.to_s !~ /^start!/ }
     end
 
     def process_cmd cmd
@@ -139,12 +146,12 @@ module Playr
       args = cmd.split[1..-1]
       if commands.include?(meth.to_sym)
         begin
-          self.send(meth, *args)
+          send(meth, *args)
         rescue ArgumentError => e
-          puts "Command \""+ meth +"\" "+ e.message
+          @print.write("Command \""+ meth +"\" "+ e.message)
         end
       else
-        warn "Unknown command: #{cmd.inspect}"
+        @print.write("Unknown command: #{cmd.inspect}")
       end
     end
   end
@@ -152,35 +159,41 @@ module Playr
   class Printer
     include Playr
 
-    def initialize;      super                          end
-    def prompt d, i='♪'; prompt_color(d +' '+ i +' ')   end
-    def write data;      (Playr.out || $>)<< data; data end
+    def initialize; super                          end
+    def write data; (Playr.out || $>)<< data; data end
 
-    def search s
-      write(blue("song: ") + @format.song_name(l.fetch('file')) +"\n" )
+    def prompt data, icon='♪'
+      prompt_color(data +' '+ icon +' ')
     end
 
-    def songs s
-      s.each { |p|
-        write(blue("♬ ") + @format.song_name(p.fetch('file')) + "\n")
+    def search song
+      str = blue("song: ") + "%s\n"
+      write(str % @format.song_name(song.fetch('file')))
+    end
+
+    def songs songs
+      songs.each { |sl|
+        write(blue("♬ ") + @format.song_name(s.fetch('file')) +"\n")
       }
     end
 
     def playlists pls
-      pls.each { |p|
-        write(blue("pl: ") + p +"\n")
+      pls.each { |pl|
+        write(blue("pl: ") + pl +"\n")
       }
     end
 
     def playlist pl
+      song = blue("song:") + yellow("%s ") + "%s\n"
       write(green(@format.pl_name(@mpd.playlist.first)))
-      pl.each { |l|
-        write(blue("song:") + yellow(l.fetch('id'))+' '+ @format.song_name(l.fetch('file')) +"\n")
+      pl.each { |s|
+        write(song % [s.fetch('id'), @format.song_name(s.fetch('file'))])
       }
     end
 
-    def help c
-      write(blue(c[0].to_s) + (c[1].nil? ? '' : (' or: ' + green(c[1].to_s))) + "\n")
+    def help cmd
+      aliased = cmd[1].nil? ? '' : (' or: ' + green(cmd[1].to_s))
+      write(blue(cmd[0].to_s) + aliased + "\n")
     end
 
     private
