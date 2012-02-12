@@ -11,10 +11,13 @@ module Playr
 
   def initialize
     @mpd    ||= MPD.new
+    puts "DBG: mpd=#{@mpd.inspect}"
     @vol    ||= Volume.new
     @format ||= Formatter.new
+    @print  ||= Printer.new
     begin
-      @mpd.connected? || @mpd.connect
+      @mpd.connect unless @mpd.connected?
+      puts "DBG: connected!" if @mpd.connected?
     rescue Errno::ECONNREFUSED => e
       @print.write e.message
       exit 1
@@ -27,7 +30,6 @@ module Playr
 
     def initialize
       super
-      @print ||= Printer.new
       start! unless $TEST
     end
 
@@ -40,7 +42,10 @@ module Playr
     end
 
     def search rgx
-      @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
+      Dbg.new.log_debug(self, __method__, caller, __FILE__, __LINE__,
+                  instance_variables, {rgx: rgx}) {
+        @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
+      }
     end
 
     def songs rgx=nil
@@ -142,24 +147,33 @@ module Playr
     end
 
     def process_cmd cmd
-      meth = cmd.split[0]
-      args = cmd.split[1..-1]
-      if commands.include?(meth.to_sym)
-        begin
-          send(meth, *args)
-        rescue ArgumentError => e
-          @print.write("Command \""+ meth +"\" "+ e.message)
+      # Dbg.new.log_debug(self, __method__, caller, __FILE__, __LINE__,
+      #             instance_variables, {cmd: cmd}) {
+
+        meth = cmd.split[0]
+        args = cmd.split[1..-1]
+        if commands.include?(meth.to_sym)
+          begin
+            send(meth, *args)
+          rescue ArgumentError => e
+            @print.write("Command \""+ meth +"\" "+ e.message)
+          end
+        else
+          @print.write("Unknown command: #{cmd.inspect}")
         end
-      else
-        @print.write("Unknown command: #{cmd.inspect}")
-      end
+      # }
     end
   end
 
   class Printer
-    include Playr
+    include Term::ANSIColor
 
-    def initialize; super                          end
+    def initialize
+      @mpd    ||= MPD.new
+      @vol    ||= Volume.new
+      @format ||= Formatter.new
+    end
+
     def write data; (Playr.out || $>)<< data; data end
 
     def prompt data, icon='♪'
@@ -221,6 +235,22 @@ module Playr
       song.scan(/[[:print:]]/).join.gsub(/(.*\/)|(\..*$)/,'')
     end
   end
+
+  class Dbg
+    include Playr
+    def log_debug cls, mth, cllr, file, line, ivrs={}, lvrs={}
+      msg = [magenta("#{cls.class.name}##{mth}"),
+        "\nCaller => " + green("#{cllr[0][/`.*'/][1..-2]}"),
+        "\n---Instance Vars---"]
+      ivrs.each { |v| msg << yellow("#{v}=")  + eval("#{v}").to_s }
+      msg << "\n---local Vars---"
+      lvrs.each { |v| msg << yellow("#{v}=")  + eval("#{v}").to_s }
+      msg << "\n#{file}:#{line}"
+      puts red("DBG: #{Time.now}: -------------------------------")
+      puts(msg)
+      yield
+    end
+  end
 end
 
 $stdout.sync = $stderr.sync = true
@@ -236,6 +266,7 @@ opts = OptionParser.new do |o|
 end
 
 opts.parse!(ARGV)
+
 
 __END__
 #encoding: utf-8
