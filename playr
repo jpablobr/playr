@@ -5,31 +5,24 @@ require 'optparse'
 module Playr
   require 'librmpd'
   require 'term/ansicolor'
-  include Term::ANSIColor
 
   extend Module.new { attr_accessor :out }
 
-  def initialize
-    @mpd    ||= MPD.new
-    puts "DBG: mpd=#{@mpd.inspect}"
-    @vol    ||= Volume.new
-    @format ||= Formatter.new
-    @print  ||= Printer.new
-    begin
-      @mpd.connect unless @mpd.connected?
-      puts "DBG: connected!" if @mpd.connected?
-    rescue Errno::ECONNREFUSED => e
-      @print.write e.message
-      exit 1
-    end
-  end
-
   class Client
     require 'readline'
-    include Playr
+    include Term::ANSIColor
 
     def initialize
-      super
+      @mpd    ||= MPD.new
+      @vol    ||= Volume.new
+      @format ||= Formatter.new
+      @print  ||= Printer.new
+      begin
+        @mpd.connect unless @mpd.connected?
+      rescue Errno::ECONNREFUSED => e
+        @print.write e.message
+        exit 1
+      end
       start! unless $TEST
     end
 
@@ -42,10 +35,8 @@ module Playr
     end
 
     def search rgx
-      Dbg.new.log_debug(self, __method__, caller, __FILE__, __LINE__,
-                  instance_variables, {rgx: rgx}) {
-        @mpd.songs.select { |s| s.fetch('file')[rgx] }.each { |l| @print.search(s) }
-      }
+      @mpd.songs.select { |song| song.fetch('file')[rgx.to_s] }
+        .each { |sng| @print.search(sng) }
     end
 
     def songs rgx=nil
@@ -147,21 +138,17 @@ module Playr
     end
 
     def process_cmd cmd
-      # Dbg.new.log_debug(self, __method__, caller, __FILE__, __LINE__,
-      #             instance_variables, {cmd: cmd}) {
-
-        meth = cmd.split[0]
-        args = cmd.split[1..-1]
-        if commands.include?(meth.to_sym)
-          begin
-            send(meth, *args)
-          rescue ArgumentError => e
-            @print.write("Command \""+ meth +"\" "+ e.message)
-          end
-        else
-          @print.write("Unknown command: #{cmd.inspect}")
+      meth = cmd.split[0]
+      args = cmd.split[1..-1]
+      if commands.include?(meth.to_sym)
+        begin
+          send(meth, *args)
+        rescue ArgumentError => e
+          @print.write("Command \"" + meth + "\"" + e.message + "\n")
         end
-      # }
+      else
+        @print.write("Unknown command: #{cmd.inspect}\n")
+      end
     end
   end
 
@@ -186,7 +173,7 @@ module Playr
     end
 
     def songs songs
-      songs.each { |sl|
+      songs.each { |s|
         write(blue("♬ ") + @format.song_name(s.fetch('file')) +"\n")
       }
     end
@@ -237,8 +224,8 @@ module Playr
   end
 
   class Dbg
-    include Playr
-    def log_debug cls, mth, cllr, file, line, ivrs={}, lvrs={}
+    include Term::ANSIColor
+    def debug cls, mth, cllr, file, line, ivrs={}, lvrs={}
       msg = [magenta("#{cls.class.name}##{mth}"),
         "\nCaller => " + green("#{cllr[0][/`.*'/][1..-2]}"),
         "\n---Instance Vars---"]
