@@ -71,7 +71,7 @@ module Playr
         .group_by{ |m| Client.instance_method(m) }
         .map(&:last)
         .sort { |a,b| a.to_s.size <=> b.to_s.size }
-        .select { |s| @print.help(s) }
+        .each { |s| @print.help(s) }
     end
 
     def play song
