@@ -96,9 +96,6 @@ module Playr
     def mute;       @vol.mute                    end
     def vol v;      @vol.vol(v)                  end
 
-    alias :ls  :playlist
-    alias :lsp :playlists
-    alias :ps  :pause
     alias :p   :play
     alias :c   :continue
     alias :s   :search
@@ -108,6 +105,9 @@ module Playr
     alias :v   :vol
     alias :m   :mute
     alias :d   :disconnect
+    alias :ps  :pause
+    alias :ls  :playlist
+    alias :lsp :playlists
 
     private
 
@@ -234,7 +234,7 @@ module Playr
       lvrs.each { |v| msg << yellow("#{v}=")  + eval("#{v}").to_s }
       msg << "\n#{file}:#{line}"
       puts red("DBG: #{Time.now}: -------------------------------")
-      puts(msg)
+      puts msg
       yield
     end
   end
