@@ -244,8 +244,8 @@ $stdout.sync = $stderr.sync = true
 opts = OptionParser.new do |o|
   o.banner = "Usage: playr [OPTION] [<args>]"
   o.separator ""
-  o.on("-h", "--help", "Print this help.")      { Playr.out.puts(opts) }
-  o.on("-v", "--version", "Print version.")     { Playr.out.puts("0.1.1") }
+  o.on("-h", "--help", "Print this help.")      { puts(opts) }
+  o.on("-v", "--version", "Print version.")     { puts("0.1.1") }
   o.on("-s", "--start", "Run the mpd client.")  { Playr::Client.new }
   o.on("-t", "--tests", "run tests.")           { eval(DATA.read) }
   o.on("-d", "--debug", "Enable debug output.") { $DEBUG = true }
