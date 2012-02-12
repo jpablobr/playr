@@ -168,7 +168,7 @@ module Playr
     end
 
     def search song
-      str = blue("song: ") + "%s\n"
+      str = blue("song: ") +"%s\n"
       write(str % @format.song_name(song.fetch('file')))
     end
 
@@ -179,13 +179,11 @@ module Playr
     end
 
     def playlists pls
-      pls.each { |pl|
-        write(blue("pl: ") + pl +"\n")
-      }
+      pls.each { |pl| write(blue("pl: ") + pl +"\n") }
     end
 
     def playlist pl
-      song = blue("song:") + yellow("%s ") + "%s\n"
+      song = blue("song:") + yellow("%s ") +"%s\n"
       write(green(@format.pl_name(@mpd.playlist.first)))
       pl.each { |s|
         write(song % [s.fetch('id'), @format.song_name(s.fetch('file'))])
@@ -193,7 +191,7 @@ module Playr
     end
 
     def help cmd
-      aliased = cmd[1].nil? ? '' : (' or: ' + green(cmd[1].to_s))
+      aliased = cmd[1].nil? ? '' : ' or: '+ green(cmd[1].to_s)
       write(blue(cmd[0].to_s) + aliased + "\n")
     end
 
@@ -226,9 +224,11 @@ module Playr
   class Dbg
     include Term::ANSIColor
     def debug cls, mth, cllr, file, line, ivrs={}, lvrs={}
-      msg = [magenta("#{cls.class.name}##{mth}"),
-        "\nCaller => " + green("#{cllr[0][/`.*'/][1..-2]}"),
-        "\n---Instance Vars---"]
+      msg = [
+        magenta("#{cls.class.name}##{mth}"),
+        "\nCaller => "+ green("#{cllr[0][/`.*'/][1..-2]}"),
+        "\n---Instance Vars---"
+      ]
       ivrs.each { |v| msg << yellow("#{v}=")  + eval("#{v}").to_s }
       msg << "\n---local Vars---"
       lvrs.each { |v| msg << yellow("#{v}=")  + eval("#{v}").to_s }
@@ -253,7 +253,6 @@ opts = OptionParser.new do |o|
 end
 
 opts.parse!(ARGV)
-
 
 __END__
 #encoding: utf-8
