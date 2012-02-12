@@ -125,7 +125,7 @@ module Playr
         unless Readline::HISTORY.to_a[-1] == line
           Readline::HISTORY.push line
         end
-        break if line.match(/(^quit$|^exit$|^q$)/)
+        break if line.match(/^(quit|exit|q)$/)
         process_cmd(line)
       end
     end
