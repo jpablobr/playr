@@ -34,32 +34,32 @@ module Playr
       @mpd.current_song.each_pair { |k,v| @print.write(blue(k+": ") + v +"\n") }
     end
 
-    def search rgx
-      @mpd.songs.select { |song| song.fetch('file')[rgx.to_s] }
+    def search what
+      @mpd.songs.select { |song| song.fetch('file')[what] }
         .each { |sng| @print.search(sng) }
     end
 
-    def songs rgx=nil
-      if rgx
-        list = @mpd.songs.select { |s| s.fetch('file')[rgx] }
+    def songs what=nil
+      if what
+        list = @mpd.songs.select { |s| s.fetch('file')[what] }
       else
         list = @mpd.songs
       end
       @print.songs(list)
     end
 
-    def playlist rgx=nil
-      if rgx
-        songs = @mpd.playlist.select { |s| s.fetch('file')[rgx] }
+    def playlist what=nil
+      if what
+        songs = @mpd.playlist.select { |s| s.fetch('file')[what] }
       else
         songs = @mpd.playlist
       end
       @print.playlist(songs)
     end
 
-    def playlists rgx=nil
-      if rgx
-        songs = @mpd.playlists.select { |pl| pl[rgx] }
+    def playlists what=nil
+      if what
+        songs = @mpd.playlists.select { |pl| pl[what] }
       else
         songs = @mpd.playlists
       end
