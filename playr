@@ -96,6 +96,11 @@ module Playr
     def mute;       @vol.mute                    end
     def vol v;      @vol.vol(v)                  end
 
+    def remove
+      s = `locate #{@mpd.current_song.fetch('file')}`.chomp
+      `rm  #{s}` if File.exist?(s)
+    end
+
     alias :p   :play
     alias :c   :continue
     alias :s   :search
@@ -106,6 +111,7 @@ module Playr
     alias :m   :mute
     alias :d   :disconnect
     alias :ps  :pause
+    alias :rm  :remove
     alias :ls  :playlist
     alias :lsp :playlists
 
