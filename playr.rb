@@ -1,12 +1,26 @@
 #!/usr/bin/env ruby
 # coding: utf-8
 require 'optparse'
+require 'ostruct'
 
 module Playr
   require 'librmpd'
   require 'term/ansicolor'
 
   extend Module.new { attr_accessor :out }
+
+  # ~/.playrrc.rb
+  _user_config_file = ENV['HOME']+'/.playrrc.rb'
+
+  # Defaults
+  Conf ||= OpenStruct.new(music_dir: '~/music/', mpd_dir: '~/.mpd/')
+  Conf.playlists_dir = Conf.mpd_dir + 'playlists/'
+  Conf.playlists = {
+    fav: Conf.playlists_dir + 'fav.m3u'
+  }
+
+  # overrides
+  load _user_config_file if File.exist? _user_config_file
 
   class Client
     require 'readline'
@@ -101,6 +115,11 @@ module Playr
       `rm  #{s}` if File.exist?(s)
     end
 
+    def fav
+      file = Conf.music_dir + @mpd.current_song.fetch('file')
+      `echo #{file} >> #{Conf.playlists[:fav]}`
+    end
+
     alias :p   :play
     alias :c   :continue
     alias :s   :search
@@ -108,6 +127,7 @@ module Playr
     alias :n   :next
     alias :r   :random
     alias :v   :vol
+    alias :f   :fav
     alias :m   :mute
     alias :d   :disconnect
     alias :ps  :pause
@@ -197,7 +217,7 @@ module Playr
     end
 
     def help cmd
-      aliased = cmd[1].nil? ? '' : ' or: '+ green(cmd[1].to_s)
+      aliased = cmd[1].nil? ? '' : ' || '+ green(cmd[1].to_s)
       write(blue(cmd[0].to_s) + aliased + "\n")
     end
 
